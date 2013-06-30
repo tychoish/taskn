@@ -5,36 +5,11 @@ import os
 import logging
 import argparse
 import note
-import threadpool
 import shutil 
 
-logger = logging.getLogger('taskn_admin')
+from utils import mkdir_if_needed, symlink, worker_pool, init_logging
 
-########## Utility Functions ##########
-
-def mkdir_if_needed(name, base):
-    dir = os.path.join(base, name)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    return dir
-
-def symlink(name, target):
-    if not os.path.islink(name):
-        try:
-            os.symlink(target, name)
-        except AttributeError:
-            from win32file import CreateSymbolicLink
-            CreateSymbolicLink(name, target)
-        except ImportError:
-            logger.critical('platform does not contain support for symlinks. Windows users need to pywin32.')
-            exit(1)
-
-def worker_pool(jobs, func, *args):
-    p = threadpool.ThreadPool(len(jobs))
-    for item in jobs:
-        p.putRequest(threadpool.WorkRequest(func, args=[item] + [ i for i in args]))
-    p.wait()
+logger = logging.getLogger('taskn.admin')
 
 ########## Heavy Lifting ##########
 
@@ -81,6 +56,7 @@ def _create_note_symlink(task, alias_dir):
     name = '-'.join(name.split()) 
     name = '.'.join([name, 'txt'])
 
+    logger.debug('processed note name into: {0}'.format(name))
     note_symlink(name, task['note'], alias_dir)
     
 ########## Major Functionality Wrappers ##########
@@ -88,11 +64,13 @@ def _create_note_symlink(task, alias_dir):
 def archive_stale(tasks, dir):
     archive_dir = mkdir_if_needed('archive', dir)
 
+    logger.info('creating thread pool to archive stale notes')
     worker_pool(tasks, _move_note_if_needed, archive_dir, 'completed')
 
 def generate_aliases(tasks, dir):
     alias_dir = mkdir_if_needed('aliases', dir)
 
+    logger.info('creating thread pool to generate more user friendly links')
     worker_pool(tasks, _create_note_symlink, alias_dir)
 
 ########## User Interface ##########
@@ -110,7 +88,7 @@ def user_input():
 
 def main():
     ui = user_input()
-    note.init_logging(ui.logfile, ui.debug)
+    init_logging(ui.logfile, ui.debug)
 
     tasks = note.list_tasks(None, ui.notesdir, ui.ext)
 

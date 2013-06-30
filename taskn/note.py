@@ -5,11 +5,12 @@ import subprocess
 import argparse
 import os
 import logging
-import yaml
 import json
 import threadpool
 
-logger = logging.getLogger('tasknote')
+from utils import expand_tree, create_notes_dir, dump_yaml, init_logging, worker_pool
+
+logger = logging.getLogger('taskn')
 
 try:
     from taskw import TaskWarriorExperimental, TaskWarrior
@@ -19,7 +20,7 @@ except ImportError:
     logger.critical('ERROR - taskw module required.')
     exit(1)
 
-############# utility and setup functions #############
+############# setup function #############
 
 def get_or_make_task(task=None):
     if task is None or not task:
@@ -38,33 +39,6 @@ def get_or_make_task(task=None):
             new_task = wo.task_add(description=task_desc, project='note')['id']
             return w.get_task(id=new_task)
 
-def expand_tree(path, input_extension):
-    file_list = []
-
-    for root, subFolders, files in os.walk(path):
-        for file in files:
-            f = os.path.join(root, file)
-
-            if os.path.islink(f):
-                continue
-            elif f.endswith(input_extension):
-                file_list.append(f)
-
-    return file_list
-
-def create_notes_dir(dir, strict):
-    if not os.path.exists(dir):
-        if not strict:
-            logger.info("{0} notes directory doesn't exist. creating now.".format(dir))
-            os.makedirs(dir)
-        else:
-            logger.critical('notes directory, "{0}" does not exist.'
-                            'Create or restart without strict mode.'.format(dir))
-            exit(1)
-
-def dump_yaml(data):
-    return yaml.safe_dump_all(data, default_flow_style=False, indent=3,
-                         line_break=True) + '...'
 
 ############# core functions #############
 
@@ -155,12 +129,7 @@ def list_tasks(query, dir, ext):
     notes = expand_tree(dir, ext)
     tasks = []
 
-    p = threadpool.ThreadPool(len(notes))
-    for note in notes:
-        job = threadpool.WorkRequest(render_list_item, args=(note, query, tasks))
-        p.putRequest(job)
-
-    p.wait()
+    worker_pool(notes, render_list_item, query, tasks)
 
     return tasks
 
@@ -193,22 +162,12 @@ def user_input():
 
     return parser.parse_args()
 
-def init_logging(logfile, debug=False):
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        if logfile is None:
-            logging.basicConfig(level=logging.CRITICAL)
-        else:
-            logging.basicConfig(level=logging.WARNING, filename=logfile)
-
 def main():
     # Setup: logging, notesdir
     ui = user_input()
 
     init_logging(ui.logfile, ui.debug)
     create_notes_dir(ui.notesdir, ui.strict)
-
 
     # user interface wiring
     if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == '--debug'):
