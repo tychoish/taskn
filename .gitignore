@@ -1,0 +1,13 @@
+build/*
+*.swp
+.#*
+\#*#
+*__pycache__*
+*.pyc
+*.pyo
+*.bak
+.DS_Store
+dist*
+*.egg-info
+docs/build
+TAGS
