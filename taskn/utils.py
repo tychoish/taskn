@@ -1,6 +1,7 @@
 import os
 import logging
 import yaml
+import json
 
 logger = logging.getLogger('taskn.utils')
 __multi__ = 'thread'
@@ -80,3 +81,6 @@ def create_notes_dir(dir, strict):
 def dump_yaml(data):
     return yaml.safe_dump_all(data, default_flow_style=False, indent=3,
                          line_break=True) + '...'
+
+def dump_json(data):
+    return json.dumps(data, indent=3)

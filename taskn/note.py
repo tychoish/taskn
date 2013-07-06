@@ -133,8 +133,12 @@ def list_tasks(query, dir, ext):
 
     return tasks
 
-def render_task_list(query, dir, ext):
-    print(dump_yaml(list_tasks(query, dir, ext)))
+def render_task_list(query, dir, ext, fmt):
+    if fmt in ['note', 'yaml']:
+        print(dump_yaml(list_tasks(query, dir, ext)))
+    elif fmt == 'json':
+        for doc in list_tasks(query, dir, ext):
+            print(json.dumps(doc, indent=2))
 
 ########## User Interaction and Setup ##########
 
@@ -173,11 +177,13 @@ def main():
     if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == '--debug'):
         render_task_list(query='pending',
                          dir=ui.notesdir,
-                         ext=ui.ext)
+                         ext=ui.ext,
+                         fmt=ui.format)
     elif ui.list:
         render_task_list(query=ui.filter,
-                   dir=ui.notesdir,
-                   ext=ui.ext)
+                         dir=ui.notesdir,
+                         ext=ui.ext,
+                         fmt=ui.format)
     elif ui.view:
         view_task(task_id=ui.task[0],
                   fmt=ui.format,
